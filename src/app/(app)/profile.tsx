@@ -8,8 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { useAuth } from "@/src/features/auth/auth-provider";
-
+import { useAuth } from "../features/auth/auth-provider";
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
 
