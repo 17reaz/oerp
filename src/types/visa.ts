@@ -1,9 +1,12 @@
 export type Visa = {
   id: string;
   candidate_id: string;
-  status: string | null;
-  visa_date: string | null;
+  sl: number | null;
   visa_no: string | null;
+  visa_date: string | null;
+  expiry_date: string | null;
+  visa_type: string | null;
+  status: string | null;
 
   candidate: {
     id: string;

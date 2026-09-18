@@ -7,9 +7,12 @@ export async function getVisas(): Promise<Visa[]> {
     .select(`
       id,
       candidate_id,
-      status,
-      visa_date,
+      sl,
       visa_no,
+      visa_date,
+      expiry_date,
+      visa_type,
+      status,
       candidate:candidates (
         id,
         sl,
