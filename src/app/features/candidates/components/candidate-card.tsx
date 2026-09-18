@@ -10,6 +10,9 @@ export function CandidateCard({ candidate }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.info}>
+         <Text>
+        SL: {candidate.sl ?? "—"}
+        </Text>
         <Text style={styles.name}>
           {candidate.name}
         </Text>
