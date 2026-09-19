@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { getCandidateById } from "@/services/candidate-service";
-import type { CandidateDetail } from "@/types/candidate";
+import {
+  getCandidateById,
+  getCandidateImages,
+} from "@/services/candidate-service";
+import type { CandidateDetail, CandidateImage } from "@/types/candidate";
 
 export function useCandidate(id: string | undefined) {
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null);
+  const [images, setImages] = useState<CandidateImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +24,13 @@ export function useCandidate(id: string | undefined) {
     try {
       setError(null);
 
-      const data = await getCandidateById(id);
+      const [data, nextImages] = await Promise.all([
+        getCandidateById(id),
+        getCandidateImages(id),
+      ]);
 
       setCandidate(data);
+      setImages(nextImages);
     } catch (error) {
       const message =
         error instanceof Error
@@ -47,6 +55,7 @@ export function useCandidate(id: string | undefined) {
 
   return {
     candidate,
+    images,
     loading,
     refreshing,
     error,

@@ -20,3 +20,8 @@ export type CandidateVisa = {
 export type CandidateDetail = Candidate & {
   visas: CandidateVisa[];
 };
+export type CandidateImage = {
+  key: string;
+  label: string;
+  url: string;
+};

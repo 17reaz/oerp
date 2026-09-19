@@ -10,7 +10,9 @@ import {
   View,
 } from "react-native";
 
-import { useCandidate } from "../../features/candidates/hooks/use-candidate";
+import { CandidateImages } from "../../features/candidates/components/candidate-images";
+import { useCandidate } from "@/app/features/candidates/hooks/use-candidate";
+
 
 function label(value: string | null | undefined) {
   if (!value) return "—";
@@ -40,7 +42,7 @@ function Row({
 export default function CandidateDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { candidate, loading, refreshing, error, refresh } =
+  const { candidate, images, loading, refreshing, error, refresh } =
     useCandidate(id);
 
   function goBack() {
@@ -143,6 +145,9 @@ export default function CandidateDetailScreen() {
               />
             </View>
           </View>
+
+          {/* Images */}
+          <CandidateImages images={images} />
 
           {/* Visa */}
           <View style={styles.section}>
