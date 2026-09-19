@@ -1,0 +1,80 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Install EAS CLI
+        run: bun add -g eas-cli
+
+      # appVersionSource: "remote" হওয়ায় EAS নিজেই এই কমান্ডে
+      # version/versionCode ঠিক করে দেয় (autoIncrement অনুযায়ী) —
+      # app.json ম্যানুয়ালি টাচ করার দরকার নেই
+      - name: Build APK (local, EAS manages versioning)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android --profile production --local --non-interactive --output ./build.apk
+
+      - name: Read Real Version Info from Built APK
+        id: apkinfo
+        run: |
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -n1)"
+          BADGING="$("$AAPT" dump badging ./build.apk)"
+          VERSION_NAME=$(echo "$BADGING" | grep -oP "versionName='\K[^']+")
+          VERSION_CODE=$(echo "$BADGING" | grep -oP "versionCode='\K[^']+")
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Force Update Flag
+        id: force
+        run: |
+          if git log -1 --pretty=%B | grep -qi "\[force\]"; then
+            echo "tag=[force]" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "OERP ${{ steps.apkinfo.outputs.version_name }}"
+          body: |
+            versionCode: ${{ steps.apkinfo.outputs.version_code }}
+            ${{ steps.force.outputs.tag }}
+
+            ## পরিবর্তনসমূহ
+            ${{ github.event.head_commit.message }}
+          files: ./build.apk
+          draft: false
+          prerelease: false
