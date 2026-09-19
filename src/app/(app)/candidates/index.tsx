@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
@@ -6,10 +7,8 @@ import {
   Text,
   View,
 } from "react-native";
-
-import { CandidateCard } from "../features/candidates/components/candidate-card";
-import { useCandidates } from "../features/candidates/hooks/use-candidates";
-
+import { CandidateCard } from "../../features/candidates/components/candidate-card";
+import { useCandidates } from "../../features/candidates/hooks/use-candidates";
 export default function CandidatesScreen() {
   const {
     candidates,
@@ -58,7 +57,15 @@ export default function CandidatesScreen() {
         data={candidates}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <CandidateCard candidate={item} />
+          <CandidateCard
+            candidate={item}
+            onPress={() =>
+              router.push({
+                pathname: "/candidates/[id]",
+                params: { id: item.id },
+              })
+            }
+          />
         )}
         refreshControl={
           <RefreshControl

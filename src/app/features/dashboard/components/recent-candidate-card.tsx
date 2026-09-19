@@ -14,11 +14,8 @@ export function RecentCandidateCard({
   return (
     <View style={styles.card}>
       <View style={styles.info}>
-        <Text style={styles.name}>{name}</Text>
-
-        <Text style={styles.passport}>
-          {passportNumber}
-        </Text>
+        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+<Text style={styles.passport} numberOfLines={1}>{passportNumber}</Text>
       </View>
 
       <View style={styles.stage}>
@@ -56,6 +53,7 @@ const styles = StyleSheet.create({
   },
 
   stage: {
+    maxWidth:"40%",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,

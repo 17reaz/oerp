@@ -8,3 +8,15 @@ export type Candidate = {
   workflow_state: "processing" | "hold" | null;
   is_returned: boolean;
 };
+export type CandidateVisa = {
+  id: string;
+  visa_no: string | null;
+  visa_date: string | null;
+  expiry_date: string | null;
+  visa_type: string | null;
+  status: string | null;
+};
+
+export type CandidateDetail = Candidate & {
+  visas: CandidateVisa[];
+};
