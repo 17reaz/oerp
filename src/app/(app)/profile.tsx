@@ -9,6 +9,8 @@ import {
 } from "react-native";
 
 import { useAuth } from "../features/auth/auth-provider";
+import { OtaUpdateBanner } from "../features/update/components/ota-update-banner";
+
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
 
@@ -37,6 +39,10 @@ export default function ProfileScreen() {
       <Text style={styles.email}>
         {session?.user.email ?? "No email"}
       </Text>
+
+      <View style={styles.updateSection}>
+        <OtaUpdateBanner />
+      </View>
 
       <Pressable
         onPress={handleLogout}
@@ -69,6 +75,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: "#666",
     fontSize: 16,
+  },
+
+  updateSection: {
+    marginTop: 24,
   },
 
   logout: {

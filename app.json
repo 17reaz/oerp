@@ -2,16 +2,14 @@
   "expo": {
     "name": "OERP",
     "slug": "oerp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "oerp",
     "userInterfaceStyle": "automatic",
-
     "ios": {
       "icon": "./assets/expo.icon"
     },
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -23,12 +21,10 @@
       "package": "com.oerp.app",
       "versionCode": 1
     },
-
     "web": {
       "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -41,17 +37,21 @@
       ],
       "./plugins/withApkInstaller.js"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "4d2dbe17-9b2d-4875-a44b-d6f4ad057dad"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4d2dbe17-9b2d-4875-a44b-d6f4ad057dad"
     }
   }
 }

@@ -20,3 +20,10 @@ git push origin v1.4.2
 git commit -m "fix: critical login bug [force]"
 git tag v1.4.3
 git push origin v1.4.3 && git push origin main
+
+git tag v1.0.2
+git push origin v1.0.2
+
+
+
+eas update --branch production --message "fix: dashboard bug ঠিক করা হলো"

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { checkForUpdate } from '@/services/update-service';
-import type { UpdateInfo } from '@/types/update';
+import { checkForUpdate } from "@/services/update-service";
+import type { UpdateInfo } from "@/types/update";
+import { useCallback, useEffect, useState } from "react";
 
 export function useAppUpdate() {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -16,7 +16,7 @@ export function useAppUpdate() {
     } catch (e) {
       // network error হলে silently fail করি — update check কখনো
       // app ব্যবহার আটকাবে না, শুধু mandatory update ছাড়া
-      setError(e instanceof Error ? e.message : 'Update check failed');
+      setError(e instanceof Error ? e.message : "Update check failed");
     } finally {
       setChecking(false);
     }
