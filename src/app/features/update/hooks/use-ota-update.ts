@@ -19,8 +19,7 @@ export function useOtaUpdate() {
     updateId: Updates.updateId ?? 'embedded (no OTA applied yet)',
     createdAt: Updates.createdAt ? new Date(Updates.createdAt).toLocaleString() : 'N/A',
     isEmbedded: Updates.isEmbeddedLaunch,
-    channel: Updates.channel ?? 'unknown',
-  };
+channel: Updates.channel || 'unknown',  };
 
   const checkForUpdate = useCallback(async () => {
     if (__DEV__) {
