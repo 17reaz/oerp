@@ -35,7 +35,8 @@
           "imageWidth": 76
         }
       ],
-      "./plugins/withApkInstaller.js"
+      "./plugins/withApkInstaller.js",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
