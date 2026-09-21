@@ -32,6 +32,20 @@ const CANDIDATE_SELECT = `
   )
 `;
 
+export type CreateCandidateInput = {
+  name: string;
+  passport_no: string;
+  country: string;
+  received_date?: string | null;
+  agent_id?: string | null;
+  nationality?: string | null;
+  profession?: string | null;
+  date_of_birth?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  requested_services?: Record<string, boolean>;
+};
+
 export async function getCandidates(): Promise<Candidate[]> {
   const { data, error } = await supabase
     .from("candidates")
@@ -81,6 +95,130 @@ export async function getCandidateById(
   }
 
   return (data ?? null) as CandidateDetail | null;
+}
+
+export async function checkPassportDuplicate(
+  passportNo: string,
+): Promise<boolean> {
+  const normalizedPassport = passportNo.trim().toUpperCase();
+
+  if (!normalizedPassport) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from("candidates")
+    .select("id")
+    .eq("passport_no", normalizedPassport)
+    .eq("is_deleted", false)
+    .limit(1);
+
+  if (error) {
+    console.error("Failed to check passport:", error);
+    throw error;
+  }
+
+  return (data?.length ?? 0) > 0;
+}
+
+export async function createCandidate(
+  input: CreateCandidateInput,
+): Promise<Candidate> {
+  const name = input.name.trim();
+  const passportNo = input.passport_no.trim().toUpperCase();
+  const country = input.country.trim();
+
+  if (!name) {
+    throw new Error("Candidate name is required.");
+  }
+
+  if (!passportNo) {
+    throw new Error("Passport number is required.");
+  }
+
+  if (!country) {
+    throw new Error("Country is required.");
+  }
+
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  const user = userData.user;
+
+  if (!user) {
+    throw new Error("You must be logged in to add a candidate.");
+  }
+
+  const { data: tenantId, error: tenantError } =
+    await supabase.rpc("get_my_tenant_id");
+
+  if (tenantError) {
+    console.error("Failed to resolve tenant:", tenantError);
+    throw tenantError;
+  }
+
+  if (!tenantId) {
+    throw new Error("Unable to resolve your organization.");
+  }
+
+  const duplicate = await checkPassportDuplicate(passportNo);
+
+  if (duplicate) {
+    throw new Error(
+      `Passport ${passportNo} already exists.`,
+    );
+  }
+
+  const payload = {
+    tenant_id: tenantId,
+    created_by: user.id,
+
+    name,
+    passport_no: passportNo,
+    country,
+
+    received_date: input.received_date || null,
+    agent_id: input.agent_id || null,
+
+    nationality: input.nationality?.trim() || null,
+    profession: input.profession?.trim() || null,
+    date_of_birth: input.date_of_birth || null,
+    address: input.address?.trim() || null,
+    phone: input.phone?.trim() || null,
+
+    ...(input.requested_services
+      ? {
+          requested_services: input.requested_services,
+        }
+      : {}),
+
+    // Same behavior as OverseasErp web.
+    workflow_state: "hold",
+    hold_reason: "received",
+    workflow_updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("candidates")
+    .insert(payload)
+    .select(CANDIDATE_SELECT)
+    .single();
+
+  if (error) {
+    console.error("Failed to create candidate:", error);
+    throw error;
+  }
+
+  return {
+    ...data,
+    agent: Array.isArray(data.agent)
+      ? data.agent[0] ?? null
+      : data.agent ?? null,
+  } as Candidate;
 }
 
 export async function getCandidateImages(

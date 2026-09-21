@@ -52,6 +52,22 @@ export default function CandidatesScreen() {
     }
 
     return candidates.filter((candidate) => {
+      if (statusFilter === "active") {
+        return (
+          candidate.workflow_state === "processing" &&
+          !candidate.is_returned &&
+          !candidate.final_status
+        );
+      }
+
+      if (statusFilter === "hold") {
+        return candidate.workflow_state === "hold";
+      }
+
+      if (statusFilter === "returned") {
+        return candidate.is_returned;
+      }
+
       const status =
         candidate.final_status?.toLowerCase?.() ?? "";
 
@@ -87,6 +103,45 @@ export default function CandidatesScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>
+            Candidates
+          </Text>
+
+          <Text style={styles.headerSubtitle}>
+            Manage candidate records
+          </Text>
+        </View>
+
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push("/candidates/search")}
+            style={({ pressed }) => [
+              styles.searchButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.searchButtonText}>
+              Search
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push("/candidates/add")}
+            style={({ pressed }) => [
+              styles.addButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.addButtonText}>
+              + Add
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
       {/* Quick Filters */}
       <View style={styles.filterWrapper}>
         <ScrollView
@@ -106,7 +161,8 @@ export default function CandidatesScreen() {
                 }
                 style={({ pressed }) => [
                   styles.filterChip,
-                  selected && styles.filterChipSelected,
+                  selected &&
+                    styles.filterChipSelected,
                   pressed && styles.pressed,
                 ]}
               >
@@ -191,6 +247,65 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+
+  header: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111",
+  },
+
+  headerSubtitle: {
+    marginTop: 3,
+    fontSize: 13,
+    color: "#777",
+  },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  searchButton: {
+    height: 38,
+    paddingHorizontal: 13,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  searchButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  addButton: {
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "#111",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#fff",
   },
 
   filterWrapper: {
