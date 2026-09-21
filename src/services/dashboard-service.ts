@@ -1,14 +1,36 @@
 import { supabase } from "@/lib/supabase";
 import type { Candidate } from "@/types/candidate";
-import type { DashboardData } from "@/types/dashboard";
+import type {
+  DashboardAgent,
+  DashboardData,
+} from "@/types/dashboard";
+
+const CANDIDATE_SELECT = `
+  id,
+  sl,
+  name,
+  passport_no,
+  country,
+  agent_id,
+  current_stage,
+  final_status,
+  workflow_state,
+  is_returned,
+  agent:agents!candidates_agent_id_fkey (
+    id,
+    name,
+    code
+  )
+`;
 
 export async function getDashboardData(): Promise<DashboardData> {
   const [
     candidateCountResult,
     visaCountResult,
     recentCandidatesResult,
+    agentsResult,
+    countriesResult,
   ] = await Promise.all([
-    // Active candidates
     supabase
       .from("candidates")
       .select("id", {
@@ -19,7 +41,6 @@ export async function getDashboardData(): Promise<DashboardData> {
       .eq("is_returned", false)
       .is("final_status", null),
 
-    // Visa records
     supabase
       .from("visas")
       .select("id", {
@@ -27,12 +48,9 @@ export async function getDashboardData(): Promise<DashboardData> {
         head: true,
       }),
 
-    // Recent active candidates
     supabase
       .from("candidates")
-      .select(
-        "id, sl, name, passport_no, current_stage, final_status, workflow_state, is_returned",
-      )
+      .select(CANDIDATE_SELECT)
       .eq("is_deleted", false)
       .eq("is_returned", false)
       .is("final_status", null)
@@ -40,6 +58,23 @@ export async function getDashboardData(): Promise<DashboardData> {
         ascending: false,
       })
       .limit(5),
+
+    supabase
+      .from("agents")
+      .select("id, name, code, sl")
+      .eq("is_deleted", false)
+      .eq("is_active", true)
+      .order("name", {
+        ascending: true,
+      }),
+
+    supabase
+      .from("candidates")
+      .select("country")
+      .eq("is_deleted", false)
+      .eq("is_returned", false)
+      .is("final_status", null)
+      .not("country", "is", null),
   ]);
 
   if (candidateCountResult.error) {
@@ -54,9 +89,37 @@ export async function getDashboardData(): Promise<DashboardData> {
     throw recentCandidatesResult.error;
   }
 
+  if (agentsResult.error) {
+    throw agentsResult.error;
+  }
+
+  if (countriesResult.error) {
+    throw countriesResult.error;
+  }
+
+  const countries = Array.from(
+    new Set(
+      (countriesResult.data ?? [])
+        .map((item) => item.country)
+        .filter(
+          (country): country is string =>
+            typeof country === "string" && country.length > 0,
+        ),
+    ),
+  ).sort();
+
   return {
     activeCandidates: candidateCountResult.count ?? 0,
     visaProcessing: visaCountResult.count ?? 0,
+
+    agentCount: agentsResult.data?.length ?? 0,
+
+    countryCount: countries.length,
+
+    agents: (agentsResult.data ?? []) as DashboardAgent[],
+
+    countries,
+
     recentCandidates:
       (recentCandidatesResult.data ?? []) as Candidate[],
   };

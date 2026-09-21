@@ -7,42 +7,71 @@ type Props = {
   onPress?: () => void;
 };
 
-// নাম থেকে initials বের করে avatar-এ দেখানোর জন্য
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
-  const initials = parts.slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "");
+
+  const initials = parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "");
+
   return initials.join("") || "?";
 }
 
-// স্টেজ অনুযায়ী রং — status একনজরে বোঝার জন্য
-function getStageColor(stage: string | null): { bg: string; text: string } {
-  const s = (stage || "").toLowerCase();
-  if (s.includes("complete") || s.includes("approved")) {
-    return { bg: "#E7F7EE", text: "#1A9A5B" };
+function getStageColor(stage: string | null): {
+  bg: string;
+  text: string;
+} {
+  const value = (stage || "").toLowerCase();
+
+  if (value.includes("complete") || value.includes("approved")) {
+    return {
+      bg: "#E7F7EE",
+      text: "#1A9A5B",
+    };
   }
-  if (s.includes("hold") || s.includes("cancel")) {
-    return { bg: "#FDECEC", text: "#D3453B" };
+
+  if (value.includes("hold") || value.includes("cancel")) {
+    return {
+      bg: "#FDECEC",
+      text: "#D3453B",
+    };
   }
-  if (s.includes("processing") || s.includes("progress")) {
-    return { bg: "#FFF4E0", text: "#B7791F" };
+
+  if (value.includes("processing") || value.includes("progress")) {
+    return {
+      bg: "#FFF4E0",
+      text: "#B7791F",
+    };
   }
-  return { bg: "#F2F2F3", text: "#555" };
+
+  return {
+    bg: "#F2F2F3",
+    text: "#555",
+  };
 }
 
 export function CandidateCard({ candidate, onPress }: Props) {
   const stage = candidate.current_stage || "—";
   const stageColor = getStageColor(candidate.current_stage);
 
+  const agentName = candidate.agent?.name || "No agent";
+  const country = candidate.country || "No country";
+
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? "button" : undefined}
-      accessibilityLabel={`${candidate.name}, stage ${stage}`}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      accessibilityLabel={`${candidate.name}, ${agentName}, ${country}, stage ${stage}`}
+      style={({ pressed }) => [
+        styles.card,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{getInitials(candidate.name)}</Text>
+        <Text style={styles.avatarText}>
+          {getInitials(candidate.name)}
+        </Text>
       </View>
 
       <View style={styles.info}>
@@ -51,17 +80,45 @@ export function CandidateCard({ candidate, onPress }: Props) {
         </Text>
 
         <View style={styles.metaRow}>
-          <Text style={styles.sl}>SL {candidate.sl ?? "—"}</Text>
+          <Text style={styles.sl}>
+            SL {candidate.sl ?? "—"}
+          </Text>
+
           <View style={styles.dot} />
+
           <Text style={styles.passport} numberOfLines={1}>
             {candidate.passport_no || "No passport number"}
           </Text>
         </View>
+
+        <View style={styles.agentCountryRow}>
+          <Text style={styles.agent} numberOfLines={1}>
+            {agentName}
+          </Text>
+
+          <View style={styles.dot} />
+
+          <Text style={styles.country} numberOfLines={1}>
+            {country}
+          </Text>
+        </View>
       </View>
 
-      <View style={[styles.stage, { backgroundColor: stageColor.bg }]}>
+      <View
+        style={[
+          styles.stage,
+          {
+            backgroundColor: stageColor.bg,
+          },
+        ]}
+      >
         <Text
-          style={[styles.stageText, { color: stageColor.text }]}
+          style={[
+            styles.stageText,
+            {
+              color: stageColor.text,
+            },
+          ]}
           numberOfLines={1}
         >
           {stage}
@@ -80,7 +137,10 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
@@ -108,6 +168,7 @@ const styles = StyleSheet.create({
 
   info: {
     flex: 1,
+    minWidth: 0,
   },
 
   name: {
@@ -117,6 +178,13 @@ const styles = StyleSheet.create({
   },
 
   metaRow: {
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  agentCountryRow: {
     marginTop: 4,
     flexDirection: "row",
     alignItems: "center",
@@ -141,8 +209,23 @@ const styles = StyleSheet.create({
     color: "#999",
   },
 
-  stage: {
+  agent: {
+    flexShrink: 1,
+    maxWidth: "55%",
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+  },
+
+  country: {
+    flexShrink: 1,
     maxWidth: "35%",
+    fontSize: 12,
+    color: "#888",
+  },
+
+  stage: {
+    maxWidth: "30%",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,

@@ -1,36 +1,42 @@
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-// import { CandidateCard } from "../../features/candidates/components/candidate-card";
-import { CandidateCard } from "../features/candidates/components/candidate-card";
-import { useCandidates } from "../features/candidates/hooks/use-candidates";
 
-export default function CandidatesScreen() {
+import { DashboardHeader } from "../features/dashboard/components/dashboard-header";
+import { DashboardStatCard } from "../features/dashboard/components/dashboard-stat-card";
+import { RecentCandidateCard } from "../features/dashboard/components/recent-candidate-card";
+import { useDashboard } from "../features/dashboard/hooks/use-dashboard";
+import { useAuth } from "../features/auth/auth-provider";
+
+export default function DashboardScreen() {
+  const { session } = useAuth();
+
   const {
-    candidates,
-    totalCount,
+    activeCandidates,
+    visaProcessing,
+    agentCount,
+    countryCount,
+    agents,
+    countries,
+    recentCandidates,
     loading,
     refreshing,
     error,
     refresh,
-    searchQuery,
-    setSearchQuery,
-  } = useCandidates();
+  } = useDashboard();
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text style={styles.loadingText}>Loading candidates...</Text>
+        <Text style={styles.loadingText}>
+          Loading dashboard...
+        </Text>
       </View>
     );
   }
@@ -38,80 +44,155 @@ export default function CandidatesScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorTitle}>Unable to load candidates</Text>
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.errorTitle}>
+          Unable to load dashboard
+        </Text>
+
+        <Text style={styles.errorText}>
+          {error}
+        </Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Candidates</Text>
-
-        <Text style={styles.count}>
-          {searchQuery
-            ? `${candidates.length} of ${totalCount} candidates`
-            : `${totalCount} candidates`}
-        </Text>
-
-        {/* Search bar */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#999" />
-
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search by name, passport, stage..."
-            placeholderTextColor="#aaa"
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.searchInput}
-          />
-
-          {searchQuery.length > 0 && (
-            <Pressable
-              onPress={() => setSearchQuery("")}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-            >
-              <Ionicons name="close-circle" size={18} color="#bbb" />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
       <FlatList
-        data={candidates}
+        data={recentCandidates}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+          />
+        }
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={
+          <>
+            <DashboardHeader
+              email={session?.user?.email}
+            />
+
+            <View style={styles.statsRow}>
+              <DashboardStatCard
+                title="Candidates"
+                value={activeCandidates}
+                description="Active candidates"
+              />
+
+              <DashboardStatCard
+                title="Visa"
+                value={visaProcessing}
+                description="Visa records"
+              />
+            </View>
+
+            <View style={styles.statsRow}>
+              <DashboardStatCard
+                title="Agents"
+                value={agentCount}
+                description="Active agents"
+              />
+
+              <DashboardStatCard
+                title="Countries"
+                value={countryCount}
+                description="Active destinations"
+              />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Agents
+              </Text>
+
+              {agents.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No active agents.
+                </Text>
+              ) : (
+                <View style={styles.agentList}>
+                  {agents.map((agent) => (
+                    <View
+                      key={agent.id}
+                      style={styles.agentCard}
+                    >
+                      <View style={styles.agentAvatar}>
+                        <Text style={styles.agentAvatarText}>
+                          {agent.name
+                            .trim()
+                            .charAt(0)
+                            .toUpperCase()}
+                        </Text>
+                      </View>
+
+                      <View style={styles.agentInfo}>
+                        <Text
+                          style={styles.agentName}
+                          numberOfLines={1}
+                        >
+                          {agent.name}
+                        </Text>
+
+                        <Text style={styles.agentMeta}>
+                          {agent.code || "No code"}
+                          {" • "}
+                          SL {agent.sl ?? "—"}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Countries
+              </Text>
+
+              {countries.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No countries found.
+                </Text>
+              ) : (
+                <View style={styles.countryList}>
+                  {countries.map((country) => (
+                    <View
+                      key={country}
+                      style={styles.countryChip}
+                    >
+                      <Text style={styles.countryText}>
+                        {country}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Recent Candidates
+              </Text>
+            </View>
+          </>
+        }
         renderItem={({ item }) => (
-          <CandidateCard
-            candidate={item}
-            onPress={() =>
-              router.push({
-                pathname: "/candidates/[id]",
-                params: { id: item.id },
-              })
+          <RecentCandidateCard
+            name={item.name}
+            passportNumber={
+              item.passport_no || "No passport number"
             }
+            stage={item.current_stage || "—"}
+            agent={item.agent?.name}
+            country={item.country}
           />
         )}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
-        }
-        contentContainerStyle={
-          candidates.length === 0 ? styles.emptyContainer : styles.list
-        }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="search-outline" size={32} color="#ccc" />
-            <Text style={styles.emptyTitle}>
-              {searchQuery ? "No matches found" : "No candidates"}
-            </Text>
             <Text style={styles.emptyText}>
-              {searchQuery
-                ? `Nothing matches "${searchQuery}".`
-                : "No candidates are available for your account."}
+              No recent candidates.
             </Text>
           </View>
         }
@@ -126,49 +207,104 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
 
-  header: {
-    paddingHorizontal: 20,
+  content: {
+    padding: 20,
     paddingTop: 64,
-    paddingBottom: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingBottom: 30,
   },
 
-  title: {
-    fontSize: 28,
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 10,
+  },
+
+  section: {
+    marginTop: 22,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    letterSpacing: -0.3,
+    marginBottom: 12,
+    color: "#111",
   },
 
-  count: {
-    marginTop: 4,
-    fontSize: 13,
+  agentList: {
+    gap: 8,
+  },
+
+  agentCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+
+  agentAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E6F4FE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  agentAvatarText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#208AEF",
+  },
+
+  agentInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  agentName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111",
+  },
+
+  agentMeta: {
+    marginTop: 3,
+    fontSize: 12,
     color: "#888",
   },
 
-  searchBar: {
-    marginTop: 16,
+  countryList: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
-    backgroundColor: "#F2F2F3",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 44,
   },
 
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: "#111",
-    padding: 0,
+  countryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
   },
 
-  list: {
-    padding: 16,
-    paddingBottom: 24,
-    gap: 10,
+  countryText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#555",
+  },
+
+  empty: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+
+  emptyText: {
+    fontSize: 13,
+    color: "#888",
   },
 
   center: {
@@ -192,28 +328,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
     color: "#777",
-  },
-
-  emptyContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
-
-  empty: {
-    alignItems: "center",
-    padding: 24,
-    gap: 6,
-  },
-
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 4,
-  },
-
-  emptyText: {
-    fontSize: 13,
-    color: "#888",
-    textAlign: "center",
   },
 });

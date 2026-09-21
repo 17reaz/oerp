@@ -6,7 +6,6 @@ import type {
 } from "@/types/candidate";
 
 // Temporary dummy image (no storage bucket yet).
-// Replace `url` with any image link you like.
 const DUMMY_IMAGES: CandidateImage[] = [
   {
     key: "passport",
@@ -15,12 +14,29 @@ const DUMMY_IMAGES: CandidateImage[] = [
   },
 ];
 
+const CANDIDATE_SELECT = `
+  id,
+  sl,
+  name,
+  passport_no,
+  country,
+  agent_id,
+  current_stage,
+  final_status,
+  workflow_state,
+  is_returned,
+  agent:agents!candidates_agent_id_fkey (
+    id,
+    name,
+    code
+  )
+`;
+
 export async function getCandidates(): Promise<Candidate[]> {
   const { data, error } = await supabase
     .from("candidates")
-    .select(
-      "id, sl, name, passport_no, current_stage, final_status, workflow_state, is_returned",
-    )
+    .select(CANDIDATE_SELECT)
+    .eq("is_deleted", false)
     .order("created_at", {
       ascending: false,
     });
@@ -30,7 +46,12 @@ export async function getCandidates(): Promise<Candidate[]> {
     throw error;
   }
 
-  return (data ?? []) as Candidate[];
+  return (data ?? []).map((candidate) => ({
+    ...candidate,
+    agent: Array.isArray(candidate.agent)
+      ? candidate.agent[0] ?? null
+      : candidate.agent ?? null,
+  })) as Candidate[];
 }
 
 export async function getCandidateById(
@@ -40,14 +61,7 @@ export async function getCandidateById(
     .from("candidates")
     .select(
       `
-      id,
-      sl,
-      name,
-      passport_no,
-      current_stage,
-      final_status,
-      workflow_state,
-      is_returned,
+      ${CANDIDATE_SELECT},
       visas (
         id,
         visa_no,
@@ -69,7 +83,6 @@ export async function getCandidateById(
   return (data ?? null) as CandidateDetail | null;
 }
 
-// Returns the same dummy image for every candidate for now.
 export async function getCandidateImages(
   _id: string,
 ): Promise<CandidateImage[]> {
