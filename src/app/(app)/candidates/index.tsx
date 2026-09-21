@@ -2,13 +2,38 @@ import { router } from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useMemo, useState } from "react";
+
 import { CandidateCard } from "../../features/candidates/components/candidate-card";
 import { useCandidates } from "../../features/candidates/hooks/use-candidates";
+
+type StatusFilter =
+  | "all"
+  | "active"
+  | "returned"
+  | "complete"
+  | "hold"
+  | "cancelled";
+
+const statusFilters: {
+  key: StatusFilter;
+  label: string;
+}[] = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "hold", label: "Hold" },
+  { key: "returned", label: "Returned" },
+  { key: "complete", label: "Complete" },
+  { key: "cancelled", label: "Cancelled" },
+];
+
 export default function CandidatesScreen() {
   const {
     candidates,
@@ -18,10 +43,27 @@ export default function CandidatesScreen() {
     refresh,
   } = useCandidates();
 
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>("all");
+
+  const filteredCandidates = useMemo(() => {
+    if (statusFilter === "all") {
+      return candidates;
+    }
+
+    return candidates.filter((candidate) => {
+      const status =
+        candidate.final_status?.toLowerCase?.() ?? "";
+
+      return status === statusFilter;
+    });
+  }, [candidates, statusFilter]);
+
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
+
         <Text style={styles.loadingText}>
           Loading candidates...
         </Text>
@@ -45,16 +87,65 @@ export default function CandidatesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Candidates</Text>
+      {/* Quick Filters */}
+      <View style={styles.filterWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {statusFilters.map((filter) => {
+            const selected =
+              statusFilter === filter.key;
 
-        <Text style={styles.count}>
-          {candidates.length} candidates
-        </Text>
+            return (
+              <Pressable
+                key={filter.key}
+                onPress={() =>
+                  setStatusFilter(filter.key)
+                }
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  selected && styles.filterChipSelected,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    selected &&
+                      styles.filterChipTextSelected,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
+      {/* Candidate Count */}
+      <View style={styles.countRow}>
+        <Text style={styles.countText}>
+          {filteredCandidates.length} candidates
+        </Text>
+
+        {statusFilter !== "all" && (
+          <Pressable
+            onPress={() => setStatusFilter("all")}
+            hitSlop={8}
+          >
+            <Text style={styles.clearText}>
+              Clear
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Candidate List */}
       <FlatList
-        data={candidates}
+        data={filteredCandidates}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <CandidateCard
@@ -62,7 +153,9 @@ export default function CandidatesScreen() {
             onPress={() =>
               router.push({
                 pathname: "/candidates/[id]",
-                params: { id: item.id },
+                params: {
+                  id: item.id,
+                },
               })
             }
           />
@@ -74,7 +167,7 @@ export default function CandidatesScreen() {
           />
         }
         contentContainerStyle={
-          candidates.length === 0
+          filteredCandidates.length === 0
             ? styles.emptyContainer
             : styles.list
         }
@@ -85,7 +178,7 @@ export default function CandidatesScreen() {
             </Text>
 
             <Text style={styles.emptyText}>
-              No candidates are available for your account.
+              No candidates match the selected filter.
             </Text>
           </View>
         }
@@ -100,21 +193,63 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
 
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 64,
-    paddingBottom: 20,
+  filterWrapper: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
   },
 
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
+  filterContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
   },
 
-  count: {
-    marginTop: 6,
+  filterChip: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f3f3f3",
+  },
+
+  filterChipSelected: {
+    backgroundColor: "#111",
+  },
+
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+  },
+
+  filterChipTextSelected: {
+    color: "#fff",
+  },
+
+  countRow: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  countText: {
     fontSize: 13,
     color: "#777",
+  },
+
+  clearText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#111",
+  },
+
+  pressed: {
+    opacity: 0.7,
   },
 
   list: {

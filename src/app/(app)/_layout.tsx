@@ -3,18 +3,14 @@ import { ActivityIndicator, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuth } from "../features/auth/auth-provider";
+import { AppHeader } from "../components/app-header";
+
 export default function AppLayout() {
   const { session, loading } = useAuth();
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <View style={styles.center}>
         <ActivityIndicator />
       </View>
     );
@@ -27,17 +23,32 @@ export default function AppLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+
+        header: ({ options }) => (
+          <AppHeader
+            title={
+              typeof options.title === "string"
+                ? options.title
+                : "OERP"
+            }
+          />
+        ),
+
         tabBarActiveTintColor: "#111",
         tabBarInactiveTintColor: "#999",
+
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "500",
         },
+
         tabBarStyle: {
           height: 64,
           paddingTop: 6,
           paddingBottom: 8,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: "#ddd",
         },
       }}
     >
@@ -99,3 +110,13 @@ export default function AppLayout() {
     </Tabs>
   );
 }
+
+import { StyleSheet } from "react-native";
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

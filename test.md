@@ -26,4 +26,4 @@ git push origin v1.0.2
 
 
 
-eas update --branch production --message "fix: dashboard bug ঠিক করা হলো"
+eas update --branch production --message "serch"

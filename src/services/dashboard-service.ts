@@ -108,6 +108,15 @@ export async function getDashboardData(): Promise<DashboardData> {
     ),
   ).sort();
 
+  const recentCandidates: Candidate[] = (
+    recentCandidatesResult.data ?? []
+  ).map((candidate) => ({
+    ...candidate,
+    agent: Array.isArray(candidate.agent)
+      ? candidate.agent[0] ?? null
+      : candidate.agent,
+  })) as Candidate[];
+
   return {
     activeCandidates: candidateCountResult.count ?? 0,
     visaProcessing: visaCountResult.count ?? 0,
@@ -120,7 +129,6 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     countries,
 
-    recentCandidates:
-      (recentCandidatesResult.data ?? []) as Candidate[],
+    recentCandidates,
   };
 }

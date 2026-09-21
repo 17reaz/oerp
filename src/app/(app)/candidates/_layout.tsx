@@ -4,6 +4,7 @@ export default function CandidatesLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="search" />
       <Stack.Screen name="[id]" />
     </Stack>
   );
