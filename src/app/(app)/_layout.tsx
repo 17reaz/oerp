@@ -1,17 +1,17 @@
-import { Redirect, Tabs } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Redirect, Tabs } from "expo-router";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { useAuth } from "../features/auth/auth-provider";
 import { AppHeader } from "../components/app-header";
+import { useAuth } from "../features/auth/auth-provider";
 
 export default function AppLayout() {
   const { session, loading } = useAuth();
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color="#208AEF" />
       </View>
     );
   }
@@ -35,75 +35,133 @@ export default function AppLayout() {
           />
         ),
 
-        tabBarActiveTintColor: "#111",
-        tabBarInactiveTintColor: "#999",
+        tabBarActiveTintColor: "#208AEF",
+        tabBarInactiveTintColor: "#98A2B3",
 
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "500",
+          fontWeight: "600",
+          marginTop: 1,
+        },
+
+        tabBarItemStyle: {
+          paddingTop: 5,
         },
 
         tabBarStyle: {
-          height: 64,
-          paddingTop: 6,
+          height: 68,
+          paddingTop: 3,
           paddingBottom: 8,
+
+          backgroundColor: "#FFFFFF",
+
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: "#ddd",
+          borderTopColor: "#E5E7EB",
+
+          elevation: 8,
+
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: {
+            width: 0,
+            height: -3,
+          },
         },
       }}
     >
+      {/* Dashboard */}
       <Tabs.Screen
         name="index"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="grid-outline"
-              size={size}
-              color={color}
-            />
+
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={[
+                styles.tabIcon,
+                focused && styles.tabIconActive,
+              ]}
+            >
+              <Ionicons
+                name={focused ? "grid" : "grid-outline"}
+                size={20}
+                color={color}
+              />
+            </View>
           ),
         }}
       />
 
+      {/* Candidates */}
       <Tabs.Screen
         name="candidates"
         options={{
           title: "Candidates",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="people-outline"
-              size={size}
-              color={color}
-            />
+
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={[
+                styles.tabIcon,
+                focused && styles.tabIconActive,
+              ]}
+            >
+              <Ionicons
+                name={focused ? "people" : "people-outline"}
+                size={20}
+                color={color}
+              />
+            </View>
           ),
         }}
       />
 
+      {/* Visa */}
       <Tabs.Screen
         name="visa"
         options={{
           title: "Visa",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="document-text-outline"
-              size={size}
-              color={color}
-            />
+
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={[
+                styles.tabIcon,
+                focused && styles.tabIconActive,
+              ]}
+            >
+              <Ionicons
+                name={
+                  focused
+                    ? "document-text"
+                    : "document-text-outline"
+                }
+                size={20}
+                color={color}
+              />
+            </View>
           ),
         }}
       />
 
+      {/* Profile */}
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="person-outline"
-              size={size}
-              color={color}
-            />
+
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={[
+                styles.tabIcon,
+                focused && styles.tabIconActive,
+              ]}
+            >
+              <Ionicons
+                name={focused ? "person" : "person-outline"}
+                size={20}
+                color={color}
+              />
+            </View>
           ),
         }}
       />
@@ -111,12 +169,25 @@ export default function AppLayout() {
   );
 }
 
-import { StyleSheet } from "react-native";
-
 const styles = StyleSheet.create({
-  center: {
+  loadingContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#F8FAFC",
+  },
+
+  tabIcon: {
+    width: 40,
+    height: 28,
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    borderRadius: 14,
+  },
+
+  tabIconActive: {
+    backgroundColor: "#EAF4FF",
   },
 });
