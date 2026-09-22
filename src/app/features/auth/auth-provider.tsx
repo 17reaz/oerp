@@ -5,13 +5,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Platform } from "react-native";
+
+import { makeRedirectUri } from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
-import { Platform } from "react-native";
-import * as Linking from "expo-linking";
-import * as WebBrowser from "expo-web-browser";
+
 WebBrowser.maybeCompleteAuthSession();
+
 type AuthContextValue = {
   session: Session | null;
   loading: boolean;
@@ -63,69 +67,139 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }
-async function signInWithGoogle() {
-  const redirectTo = Linking.createURL("auth/callback");
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
+  async function signInWithGoogle() {
+    if (Platform.OS === "web") {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return;
+    }
+
+    /*
+     * Native Android callback:
+     *
+     * oerp://auth/callback
+     *
+     * app.json already has:
+     *
+     * "scheme": "oerp"
+     */
+    const redirectTo = makeRedirectUri({
+      scheme: "oerp",
+      path: "auth/callback",
+    });
+
+    console.log("Google redirect URL:", redirectTo);
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.url) {
+      throw new Error("Unable to start Google sign-in.");
+    }
+
+    console.log("Google OAuth URL:", data.url);
+
+    const result = await WebBrowser.openAuthSessionAsync(
+      data.url,
       redirectTo,
-      skipBrowserRedirect: Platform.OS !== "web",
-    },
-  });
+    );
 
-  if (error) {
-    throw error;
-  }
+    console.log("Google auth result:", result);
 
-  // Web: Supabase browser redirect handle করবে
-  if (Platform.OS === "web") {
-    return;
-  }
-
-  if (!data?.url) {
-    throw new Error("Unable to start Google sign-in.");
-  }
-
-  const result = await WebBrowser.openAuthSessionAsync(
-    data.url,
-    redirectTo,
-  );
-
-  if (result.type !== "success" || !result.url) {
     if (result.type === "cancel" || result.type === "dismiss") {
       return;
     }
 
-    throw new Error("Google sign-in could not be completed.");
-  }
+    if (result.type !== "success" || !result.url) {
+      throw new Error("Google sign-in was not completed.");
+    }
 
-  const callbackUrl = new URL(result.url);
-  const code = callbackUrl.searchParams.get("code");
+    console.log("Google callback URL:", result.url);
 
-  if (!code) {
+    /*
+     * Supabase PKCE returns:
+     *
+     * oerp://auth/callback?code=xxxxx
+     */
+    const callbackUrl = new URL(result.url);
+
+    const code = callbackUrl.searchParams.get("code");
+
+    /*
+     * OAuth errors can also be returned in the callback.
+     */
+    const errorParam = callbackUrl.searchParams.get("error");
     const errorDescription =
-      callbackUrl.searchParams.get("error_description") ??
-      callbackUrl.searchParams.get("error");
+      callbackUrl.searchParams.get("error_description");
 
-    throw new Error(
-      errorDescription ?? "Google sign-in callback failed.",
-    );
+    if (errorParam) {
+      throw new Error(
+        errorDescription ?? errorParam,
+      );
+    }
+
+    if (!code) {
+      console.error(
+        "Google callback did not contain an auth code:",
+        result.url,
+      );
+
+      throw new Error(
+        "Google callback failed: authorization code was not returned.",
+      );
+    }
+
+    console.log("Google authorization code received.");
+
+    /*
+     * Exchange Supabase PKCE authorization code
+     * for the actual Supabase session.
+     */
+    const { data: sessionData, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
+
+    if (exchangeError) {
+      console.error(
+        "Google session exchange failed:",
+        exchangeError,
+      );
+
+      throw exchangeError;
+    }
+
+    /*
+     * onAuthStateChange() normally updates the state,
+     * but keeping this here makes the native flow explicit.
+     */
+    if (sessionData.session) {
+      setSession(sessionData.session);
+    }
   }
 
-  const { error: exchangeError } =
-    await supabase.auth.exchangeCodeForSession(code);
-
-  if (exchangeError) {
-    throw exchangeError;
-  }
-}
   async function signOut() {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
       throw error;
     }
+
+    setSession(null);
   }
 
   return (
@@ -147,7 +221,9 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
+    throw new Error(
+      "useAuth must be used inside AuthProvider",
+    );
   }
 
   return context;
