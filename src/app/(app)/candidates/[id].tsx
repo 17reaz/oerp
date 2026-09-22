@@ -12,7 +12,7 @@ import {
 
 import { CandidateImages } from "../../features/candidates/components/candidate-images";
 import { useCandidate } from "@/app/features/candidates/hooks/use-candidate";
-
+import { getInitials, getStatusColor } from "@/app/features/candidates/utils";
 
 function label(value: string | null | undefined) {
   if (!value) return "—";
@@ -20,17 +20,25 @@ function label(value: string | null | undefined) {
 }
 
 function Row({
+  icon,
   title,
   value,
   last,
 }: {
+  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   value: string;
   last?: boolean;
 }) {
   return (
     <View style={[styles.row, last && styles.rowLast]}>
-      <Text style={styles.rowTitle}>{title}</Text>
+      <View style={styles.rowLeft}>
+        <View style={styles.rowIcon}>
+          <Ionicons name={icon} size={15} color="#208AEF" />
+        </View>
+
+        <Text style={styles.rowTitle}>{title}</Text>
+      </View>
 
       <Text style={styles.rowValue} selectable>
         {value}
@@ -60,9 +68,12 @@ export default function CandidateDetailScreen() {
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel="Go back"
-        style={styles.back}
+        style={({ pressed }) => [
+          styles.back,
+          pressed && styles.backPressed,
+        ]}
       >
-        <Ionicons name="chevron-back" size={22} color="#111" />
+        <Ionicons name="chevron-back" size={20} color="#111" />
 
         <Text style={styles.backText}>Candidates</Text>
       </Pressable>
@@ -105,14 +116,40 @@ export default function CandidateDetailScreen() {
             />
           }
         >
-          <Text style={styles.sl}>SL: {candidate.sl ?? "—"}</Text>
+          <View style={styles.hero}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {getInitials(candidate.name)}
+              </Text>
+            </View>
 
-          <Text style={styles.name} selectable>
-            {candidate.name}
-          </Text>
+            <View style={styles.heroInfo}>
+              <Text style={styles.sl}>
+                SL {candidate.sl ?? "—"}
+              </Text>
 
-          <View style={styles.stage}>
-            <Text style={styles.stageText}>
+              <Text style={styles.name} numberOfLines={2} selectable>
+                {candidate.name}
+              </Text>
+
+              <Text style={styles.passportSubtitle} numberOfLines={1}>
+                {candidate.passport_no || "No passport number"}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.stage,
+              { backgroundColor: getStatusColor(candidate.current_stage).bg },
+            ]}
+          >
+            <Text
+              style={[
+                styles.stageText,
+                { color: getStatusColor(candidate.current_stage).text },
+              ]}
+            >
               {candidate.current_stage || "—"}
             </Text>
           </View>
@@ -123,22 +160,27 @@ export default function CandidateDetailScreen() {
 
             <View style={styles.list}>
               <Row
+                icon="document-text-outline"
                 title="Passport No"
                 value={candidate.passport_no || "—"}
               />
               <Row
+                icon="flag-outline"
                 title="Current Stage"
                 value={candidate.current_stage || "—"}
               />
               <Row
+                icon="git-branch-outline"
                 title="Workflow"
                 value={label(candidate.workflow_state)}
               />
               <Row
+                icon="checkmark-done-outline"
                 title="Final Status"
                 value={label(candidate.final_status)}
               />
               <Row
+                icon="return-down-back-outline"
                 title="Returned"
                 value={candidate.is_returned ? "Yes" : "No"}
                 last
@@ -169,49 +211,69 @@ export default function CandidateDetailScreen() {
                   </Text>
                 </View>
               ) : (
-                candidate.visas.map((visa, index) => (
-                  <View
-                    key={visa.id}
-                    style={[
-                      styles.visaItem,
-                      index === candidate.visas.length - 1 &&
-                        styles.rowLast,
-                    ]}
-                  >
-                    <View style={styles.visaInfo}>
-                      <Text style={styles.visaNo} selectable>
-                        {visa.visa_no || "No visa number"}
-                      </Text>
+                candidate.visas.map((visa, index) => {
+                  const visaStatusColor = getStatusColor(visa.status);
 
-                      {visa.visa_type ? (
-                        <Text style={styles.visaMeta}>
-                          Type: {visa.visa_type}
+                  return (
+                    <View
+                      key={visa.id}
+                      style={[
+                        styles.visaItem,
+                        index === candidate.visas.length - 1 &&
+                          styles.rowLast,
+                      ]}
+                    >
+                      <View style={styles.visaIcon}>
+                        <Ionicons
+                          name="document-outline"
+                          size={16}
+                          color="#208AEF"
+                        />
+                      </View>
+
+                      <View style={styles.visaInfo}>
+                        <Text style={styles.visaNo} selectable>
+                          {visa.visa_no || "No visa number"}
                         </Text>
-                      ) : null}
 
-                      {visa.visa_date ? (
-                        <Text style={styles.visaMeta}>
-                          Visa Date: {visa.visa_date}
-                        </Text>
-                      ) : null}
+                        {visa.visa_type ? (
+                          <Text style={styles.visaMeta}>
+                            Type: {visa.visa_type}
+                          </Text>
+                        ) : null}
 
-                      {visa.expiry_date ? (
-                        <Text style={styles.visaMeta}>
-                          Expiry: {visa.expiry_date}
-                        </Text>
-                      ) : null}
-                    </View>
+                        {visa.visa_date ? (
+                          <Text style={styles.visaMeta}>
+                            Visa Date: {visa.visa_date}
+                          </Text>
+                        ) : null}
 
-                    <View style={styles.status}>
-                      <Text
-                        style={styles.statusText}
-                        numberOfLines={1}
+                        {visa.expiry_date ? (
+                          <Text style={styles.visaMeta}>
+                            Expiry: {visa.expiry_date}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <View
+                        style={[
+                          styles.status,
+                          { backgroundColor: visaStatusColor.bg },
+                        ]}
                       >
-                        {visa.status || "—"}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.statusText,
+                            { color: visaStatusColor.text },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {visa.status || "—"}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               )}
             </View>
           </View>
@@ -231,9 +293,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    paddingTop: 64,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    marginTop: 64,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingLeft: 8,
+    paddingRight: 14,
+    borderRadius: 999,
+  },
+
+  backPressed: {
+    backgroundColor: "#F2F2F3",
   },
 
   backText: {
@@ -270,30 +340,61 @@ const styles = StyleSheet.create({
     color: "#777",
   },
 
+  hero: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#E6F4FE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  avatarText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#208AEF",
+  },
+
+  heroInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
   sl: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#555",
+    color: "#999",
   },
 
   name: {
-    marginTop: 4,
-    fontSize: 28,
+    marginTop: 2,
+    fontSize: 22,
     fontWeight: "700",
+  },
+
+  passportSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    color: "#777",
   },
 
   stage: {
     alignSelf: "flex-start",
-    marginTop: 12,
+    marginTop: 16,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#f2f2f2",
   },
 
   stageText: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   section: {
@@ -340,6 +441,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
 
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  rowIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: "#E6F4FE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   rowTitle: {
     fontSize: 13,
     color: "#777",
@@ -356,10 +472,19 @@ const styles = StyleSheet.create({
   visaItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     padding: 16,
+    gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+
+  visaIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#E6F4FE",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   visaInfo: {
@@ -383,7 +508,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#f2f2f2",
   },
 
   statusText: {

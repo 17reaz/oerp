@@ -5,14 +5,14 @@ import type {
   CandidateImage,
 } from "@/types/candidate";
 
-// Temporary dummy image (no storage bucket yet).
-const DUMMY_IMAGES: CandidateImage[] = [
-  {
-    key: "passport",
-    label: "Passport",
-    url: "https://placehold.co/600x800.png?text=Passport",
-  },
-];
+const PASSPORTS_BUCKET = "passports";
+
+// Matches: ...-{docType}-v{version}.{ext}  e.g. "1-riajul-islam-A12345678-passport-v2.jpeg"
+const FILE_PATTERN = /-([a-z0-9]+)-v(\d+)\.([a-z0-9]+)$/i;
+
+function labelFor(docType: string): string {
+  return docType.charAt(0).toUpperCase() + docType.slice(1);
+}
 
 const CANDIDATE_SELECT = `
   id,
@@ -222,7 +222,88 @@ export async function createCandidate(
 }
 
 export async function getCandidateImages(
-  _id: string,
+  id: string,
 ): Promise<CandidateImage[]> {
-  return DUMMY_IMAGES;
+  const { data: tenantId, error: tenantError } =
+    await supabase.rpc("get_my_tenant_id");
+
+  if (tenantError || !tenantId) {
+    console.error(
+      "Failed to resolve tenant for candidate images:",
+      tenantError,
+    );
+    return [];
+  }
+
+  const folder = `${tenantId}/${id}`;
+
+  const { data: files, error: listError } = await supabase.storage
+    .from(PASSPORTS_BUCKET)
+    .list(folder, {
+      limit: 100,
+      sortBy: { column: "name", order: "asc" },
+    });
+
+  if (listError) {
+    console.error("Failed to list candidate documents:", listError);
+    return [];
+  }
+
+  if (!files || files.length === 0) {
+    return [];
+  }
+
+    // Keep only the highest version per document type (passport, visa, etc.)
+  type LatestDoc = { fileName: string; version: number };
+  const latestByType = new Map<string, LatestDoc>();
+  for (const file of files) {
+    const match = file.name.match(FILE_PATTERN);
+
+    if (!match) {
+      continue;
+    }
+
+    const [, docType, versionStr] = match;
+    const version = Number(versionStr);
+    const existing = latestByType.get(docType);
+
+    if (!existing || version > existing.version) {
+      latestByType.set(docType, {
+        fileName: file.name,
+        version,
+      });
+    }
+  }
+
+  const entries = Array.from(latestByType.entries());
+
+  const signedUrls = await Promise.all(
+    entries.map(([, { fileName }]) =>
+      supabase.storage
+        .from(PASSPORTS_BUCKET)
+        .createSignedUrl(`${folder}/${fileName}`, 60 * 60),
+    ),
+  );
+
+  const images: CandidateImage[] = [];
+
+  entries.forEach(([docType], index) => {
+    const signed = signedUrls[index];
+
+    if (signed.error || !signed.data?.signedUrl) {
+      console.error(
+        `Failed to sign URL for ${docType}:`,
+        signed.error,
+      );
+      return;
+    }
+
+    images.push({
+      key: docType,
+      label: labelFor(docType),
+      url: signed.data.signedUrl,
+    });
+  });
+
+  return images;
 }

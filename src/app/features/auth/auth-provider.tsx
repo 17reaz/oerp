@@ -8,6 +8,7 @@ import {
 import { Platform } from "react-native";
 
 import { makeRedirectUri } from "expo-auth-session";
+import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 
 import type { Session } from "@supabase/supabase-js";
@@ -115,10 +116,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     console.log("Google OAuth URL:", data.url);
 
-    const result = await WebBrowser.openAuthSessionAsync(
-      data.url,
-      redirectTo,
-    );
+    /*
+     * On some devices/emulators (e.g. BlueStacks), the OS opens the
+     * `oerp://` redirect in the app via a new intent but leaves the
+     * in-app browser tab on top instead of auto-closing it. Listen
+     * for the redirect deep link ourselves and force-dismiss the
+     * browser as soon as it fires, so the user isn't stuck looking
+     * at a blank/"page not found" tab.
+     */
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      if (url.startsWith(redirectTo)) {
+        WebBrowser.dismissBrowser();
+      }
+    });
+
+    let result: WebBrowser.WebBrowserAuthSessionResult;
+
+    try {
+      result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectTo,
+      );
+    } finally {
+      subscription.remove();
+    }
 
     console.log("Google auth result:", result);
 
