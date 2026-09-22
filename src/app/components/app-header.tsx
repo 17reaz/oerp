@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import {
   Modal,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 import { useState } from "react";
 
@@ -334,7 +336,14 @@ function isDashboard(pathname: string) {
 /* Styles                                                                       */
 /* -------------------------------------------------------------------------- */
 
-const styles = StyleSheet.create({
+/**
+ * Keep individual styles strongly typed.
+ *
+ * React Native 0.86's StyleSheet typings can widen a mixed
+ * StyleSheet.create object into ViewStyle | TextStyle | ImageStyle.
+ * That then causes Text/View style compatibility errors.
+ */
+const styles = {
   header: {
     height: 60,
     paddingHorizontal: 14,
@@ -345,7 +354,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E4E7EC",
     elevation: 2,
     zIndex: 10,
-  },
+  } satisfies ViewStyle,
 
   headerButton: {
     width: 40,
@@ -353,44 +362,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
-  },
+  } satisfies ViewStyle,
 
   headerTitleContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
+  } satisfies ViewStyle,
 
   headerTitle: {
     fontSize: 16,
-    fontWeight: "750",
+    fontWeight: "700",
     color: "#111827",
-  },
+  } satisfies TextStyle,
 
   liveDot: {
     marginTop: 2,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-  },
+  } satisfies ViewStyle,
 
   liveDotInner: {
     width: 5,
     height: 5,
     borderRadius: 3,
     backgroundColor: "#22C55E",
-  },
+  } satisfies ViewStyle,
 
   liveText: {
     fontSize: 9,
     fontWeight: "600",
     color: "#98A2B3",
-  },
+  } satisfies TextStyle,
 
   headerRight: {
     width: 40,
     alignItems: "flex-end",
-  },
+  } satisfies ViewStyle,
 
   headerAction: {
     width: 40,
@@ -398,7 +407,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-  },
+  } satisfies ViewStyle,
 
   headerProfile: {
     width: 34,
@@ -409,19 +418,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#F2F4F7",
     borderWidth: 1,
     borderColor: "#E4E7EC",
-  },
+  } satisfies ViewStyle,
 
   /* Sidebar */
 
   modalRoot: {
     flex: 1,
     flexDirection: "row",
-  },
+  } satisfies ViewStyle,
 
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(15, 23, 42, 0.38)",
-  },
+  } satisfies ViewStyle,
 
   sidebar: {
     width: 292,
@@ -435,7 +444,7 @@ const styles = StyleSheet.create({
       width: 5,
       height: 0,
     },
-  },
+  } satisfies ViewStyle,
 
   sidebarHeader: {
     minHeight: 84,
@@ -445,12 +454,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
+  } satisfies ViewStyle,
 
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
+  } satisfies ViewStyle,
 
   brandIcon: {
     width: 42,
@@ -460,26 +469,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#208AEF",
     marginRight: 11,
-  },
+  } satisfies ViewStyle,
 
   brandIconText: {
     fontSize: 20,
     fontWeight: "900",
     color: "#FFFFFF",
-  },
+  } satisfies TextStyle,
 
   logo: {
     fontSize: 19,
-    fontWeight: "850",
+    fontWeight: "800",
     color: "#111827",
     letterSpacing: 0.3,
-  },
+  } satisfies TextStyle,
 
   logoSubtitle: {
     marginTop: 2,
     fontSize: 10,
     color: "#98A2B3",
-  },
+  } satisfies TextStyle,
 
   closeButton: {
     width: 38,
@@ -488,17 +497,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F2F4F7",
-  },
+  } satisfies ViewStyle,
 
   menuContent: {
     paddingHorizontal: 12,
     paddingTop: 13,
     paddingBottom: 20,
-  },
+  } satisfies ViewStyle,
 
   menuSection: {
     marginBottom: 12,
-  },
+  } satisfies ViewStyle,
 
   sectionTitle: {
     marginTop: 10,
@@ -508,7 +517,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1,
     color: "#98A2B3",
-  },
+  } satisfies TextStyle,
 
   menuItem: {
     minHeight: 48,
@@ -518,11 +527,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 3,
     position: "relative",
-  },
+  } satisfies ViewStyle,
 
   menuItemActive: {
     backgroundColor: "#EAF4FF",
-  },
+  } satisfies ViewStyle,
 
   menuIcon: {
     width: 36,
@@ -530,23 +539,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-  },
+  } satisfies ViewStyle,
 
   menuIconActive: {
     backgroundColor: "#FFFFFF",
-  },
+  } satisfies ViewStyle,
 
   menuLabel: {
     marginLeft: 10,
     fontSize: 14,
-    fontWeight: "550",
+    fontWeight: "500",
     color: "#667085",
-  },
+  } satisfies TextStyle,
 
   menuLabelActive: {
     color: "#1674CF",
-    fontWeight: "750",
-  },
+    fontWeight: "700",
+  } satisfies TextStyle,
 
   activeIndicator: {
     position: "absolute",
@@ -555,7 +564,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 3,
     backgroundColor: "#208AEF",
-  },
+  } satisfies ViewStyle,
 
   /* Footer */
 
@@ -568,34 +577,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
+  } satisfies ViewStyle,
 
   footerTitle: {
     fontSize: 11,
-    fontWeight: "750",
+    fontWeight: "700",
     color: "#344054",
-  },
+  } satisfies TextStyle,
 
   footerSubtitle: {
     marginTop: 2,
     fontSize: 9,
     color: "#98A2B3",
-  },
+  } satisfies TextStyle,
 
   versionBadge: {
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
     backgroundColor: "#F2F4F7",
-  },
+  } satisfies ViewStyle,
 
   versionText: {
     fontSize: 9,
     fontWeight: "700",
     color: "#667085",
-  },
+  } satisfies TextStyle,
 
   pressed: {
     opacity: 0.65,
-  },
-});
+  } satisfies ViewStyle,
+};

@@ -1,251 +1,613 @@
+import { Ionicons } from "@expo/vector-icons";
+import { usePathname, useRouter } from "expo-router";
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-import { Platform } from "react-native";
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
+import { useState } from "react";
 
-import { makeRedirectUri } from "expo-auth-session";
-import * as Linking from "expo-linking";
-import * as WebBrowser from "expo-web-browser";
-
-import type { Session } from "@supabase/supabase-js";
-
-import { supabase } from "@/lib/supabase";
-
-WebBrowser.maybeCompleteAuthSession();
-
-type AuthContextValue = {
-  session: Session | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
+type AppHeaderProps = {
+  title: string;
 };
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export function AppHeader({ title }: AppHeaderProps) {
+  const router = useRouter();
+  const pathname = usePathname();
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  const isCandidates = pathname.includes("/candidates");
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        console.error("Failed to restore session:", error);
-      }
-
-      if (mounted) {
-        setSession(data.session);
-        setLoading(false);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    if (error) {
-      throw error;
-    }
-  }
-
-  async function signInWithGoogle() {
-    if (Platform.OS === "web") {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      return;
-    }
-
-    /*
-     * Native Android callback:
-     *
-     * oerp://auth/callback
-     *
-     * app.json already has:
-     *
-     * "scheme": "oerp"
-     */
-    const redirectTo = makeRedirectUri({
-      scheme: "oerp",
-      path: "auth/callback",
-    });
-
-    console.log("Google redirect URL:", redirectTo);
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data?.url) {
-      throw new Error("Unable to start Google sign-in.");
-    }
-
-    console.log("Google OAuth URL:", data.url);
-
-    /*
-     * On some devices/emulators (e.g. BlueStacks), the OS opens the
-     * `oerp://` redirect in the app via a new intent but leaves the
-     * in-app browser tab on top instead of auto-closing it. Listen
-     * for the redirect deep link ourselves and force-dismiss the
-     * browser as soon as it fires, so the user isn't stuck looking
-     * at a blank/"page not found" tab.
-     */
-    const subscription = Linking.addEventListener("url", ({ url }) => {
-      if (url.startsWith(redirectTo)) {
-        WebBrowser.dismissBrowser();
-      }
-    });
-
-    let result: WebBrowser.WebBrowserAuthSessionResult;
-
-    try {
-      result = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        redirectTo,
-      );
-    } finally {
-      subscription.remove();
-    }
-
-    console.log("Google auth result:", result);
-
-    if (result.type === "cancel" || result.type === "dismiss") {
-      return;
-    }
-
-    if (result.type !== "success" || !result.url) {
-      throw new Error("Google sign-in was not completed.");
-    }
-
-    console.log("Google callback URL:", result.url);
-
-    /*
-     * Supabase PKCE returns:
-     *
-     * oerp://auth/callback?code=xxxxx
-     */
-    const callbackUrl = new URL(result.url);
-
-    const code = callbackUrl.searchParams.get("code");
-
-    /*
-     * OAuth errors can also be returned in the callback.
-     */
-    const errorParam = callbackUrl.searchParams.get("error");
-    const errorDescription =
-      callbackUrl.searchParams.get("error_description");
-
-    if (errorParam) {
-      throw new Error(
-        errorDescription ?? errorParam,
-      );
-    }
-
-    if (!code) {
-      console.error(
-        "Google callback did not contain an auth code:",
-        result.url,
-      );
-
-      throw new Error(
-        "Google callback failed: authorization code was not returned.",
-      );
-    }
-
-    console.log("Google authorization code received.");
-
-    /*
-     * Exchange Supabase PKCE authorization code
-     * for the actual Supabase session.
-     */
-    const { data: sessionData, error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(code);
-
-    if (exchangeError) {
-      console.error(
-        "Google session exchange failed:",
-        exchangeError,
-      );
-
-      throw exchangeError;
-    }
-
-    /*
-     * onAuthStateChange() normally updates the state,
-     * but keeping this here makes the native flow explicit.
-     */
-    if (sessionData.session) {
-      setSession(sessionData.session);
-    }
-  }
-
-  async function signOut() {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      throw error;
-    }
-
-    setSession(null);
-  }
+  const navigate = (path: string) => {
+    setMenuOpen(false);
+    router.push(path as never);
+  };
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        loading,
-        signIn,
-        signInWithGoogle,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <>
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => setMenuOpen(true)}
+          style={({ pressed }) => [
+            styles.headerButton,
+            pressed && styles.pressed,
+          ]}
+          hitSlop={8}
+        >
+          <Ionicons
+            name="menu-outline"
+            size={24}
+            color="#111827"
+          />
+        </Pressable>
+
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {title}
+          </Text>
+
+          {isCandidates && (
+            <View style={styles.liveDot}>
+              <View style={styles.liveDotInner} />
+              <Text style={styles.liveText}>Workspace</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.headerRight}>
+          {isCandidates ? (
+            <Pressable
+              onPress={() =>
+                router.push("/candidates/search" as never)
+              }
+              style={({ pressed }) => [
+                styles.headerAction,
+                pressed && styles.pressed,
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="search-outline"
+                size={21}
+                color="#344054"
+              />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() =>
+                router.push("/(app)/profile" as never)
+              }
+              style={({ pressed }) => [
+                styles.headerProfile,
+                pressed && styles.pressed,
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="person-outline"
+                size={19}
+                color="#667085"
+              />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {/* Sidebar */}
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuOpen(false)}
+      >
+        <View style={styles.modalRoot}>
+          <Pressable
+            style={styles.overlay}
+            onPress={() => setMenuOpen(false)}
+          />
+
+          <View style={styles.sidebar}>
+            {/* Sidebar brand */}
+            <View style={styles.sidebarHeader}>
+              <View style={styles.brandRow}>
+                <View style={styles.brandIcon}>
+                  <Text style={styles.brandIconText}>O</Text>
+                </View>
+
+                <View>
+                  <Text style={styles.logo}>OERP</Text>
+                  <Text style={styles.logoSubtitle}>
+                    Overseas ERP
+                  </Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => setMenuOpen(false)}
+                style={({ pressed }) => [
+                  styles.closeButton,
+                  pressed && styles.pressed,
+                ]}
+                hitSlop={6}
+              >
+                <Ionicons
+                  name="close"
+                  size={21}
+                  color="#667085"
+                />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.menuContent}
+            >
+              {/* Workspace */}
+              <MenuSection title="WORKSPACE">
+                <MenuItem
+                  icon="grid-outline"
+                  active={isDashboard(pathname)}
+                  label="Dashboard"
+                  onPress={() => navigate("/(app)")}
+                />
+
+                <MenuItem
+                  icon="people-outline"
+                  active={pathname.includes("/candidates")}
+                  label="Candidates"
+                  onPress={() =>
+                    navigate("/(app)/candidates")
+                  }
+                />
+
+                <MenuItem
+                  icon="document-text-outline"
+                  active={pathname.includes("/visa")}
+                  label="Visa"
+                  onPress={() => navigate("/(app)/visa")}
+                />
+              </MenuSection>
+
+              {/* Processing */}
+              <MenuSection title="PROCESSING">
+                <MenuItem
+                  icon="medkit-outline"
+                  label="Medical"
+                  onPress={() => setMenuOpen(false)}
+                />
+
+                <MenuItem
+                  icon="document-outline"
+                  label="MOFA"
+                  onPress={() => setMenuOpen(false)}
+                />
+
+                <MenuItem
+                  icon="finger-print-outline"
+                  label="Finger"
+                  onPress={() => setMenuOpen(false)}
+                />
+
+                <MenuItem
+                  icon="shield-checkmark-outline"
+                  label="PCC"
+                  onPress={() => setMenuOpen(false)}
+                />
+
+                <MenuItem
+                  icon="school-outline"
+                  label="Takamul"
+                  onPress={() => setMenuOpen(false)}
+                />
+
+                <MenuItem
+                  icon="airplane-outline"
+                  label="Flight"
+                  onPress={() => setMenuOpen(false)}
+                />
+              </MenuSection>
+
+              {/* System */}
+              <MenuSection title="SYSTEM">
+                <MenuItem
+                  icon="bar-chart-outline"
+                  label="Reports"
+                  onPress={() => setMenuOpen(false)}
+                />
+
+                <MenuItem
+                  icon="person-outline"
+                  active={pathname.includes("/profile")}
+                  label="Profile"
+                  onPress={() =>
+                    navigate("/(app)/profile")
+                  }
+                />
+              </MenuSection>
+            </ScrollView>
+
+            {/* Sidebar footer */}
+            <View style={styles.sidebarFooter}>
+              <View>
+                <Text style={styles.footerTitle}>
+                  OERP Mobile
+                </Text>
+
+                <Text style={styles.footerSubtitle}>
+                  Overseas ERP workspace
+                </Text>
+              </View>
+
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionText}>v1.0</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
+/* -------------------------------------------------------------------------- */
+/* Menu                                                                        */
+/* -------------------------------------------------------------------------- */
 
-  if (!context) {
-    throw new Error(
-      "useAuth must be used inside AuthProvider",
-    );
-  }
+function MenuSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.menuSection}>
+      <Text style={styles.sectionTitle}>{title}</Text>
 
-  return context;
+      {children}
+    </View>
+  );
 }
+
+function MenuItem({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuItem,
+        active && styles.menuItemActive,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.menuIcon,
+          active && styles.menuIconActive,
+        ]}
+      >
+        <Ionicons
+          name={icon}
+          size={19}
+          color={active ? "#208AEF" : "#667085"}
+        />
+      </View>
+
+      <Text
+        style={[
+          styles.menuLabel,
+          active && styles.menuLabelActive,
+        ]}
+      >
+        {label}
+      </Text>
+
+      {active && (
+        <View style={styles.activeIndicator} />
+      )}
+    </Pressable>
+  );
+}
+
+function isDashboard(pathname: string) {
+  return (
+    pathname === "/" ||
+    pathname === "/(app)" ||
+    pathname.endsWith("/(app)")
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Styles                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Keep individual styles strongly typed.
+ *
+ * React Native 0.86's StyleSheet typings can widen a mixed
+ * StyleSheet.create object into ViewStyle | TextStyle | ImageStyle.
+ * That then causes Text/View style compatibility errors.
+ */
+const styles = {
+  header: {
+    height: 60,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E4E7EC",
+    elevation: 2,
+    zIndex: 10,
+  } satisfies ViewStyle,
+
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  } satisfies ViewStyle,
+
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  } satisfies ViewStyle,
+
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  } satisfies TextStyle,
+
+  liveDot: {
+    marginTop: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  } satisfies ViewStyle,
+
+  liveDotInner: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#22C55E",
+  } satisfies ViewStyle,
+
+  liveText: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#98A2B3",
+  } satisfies TextStyle,
+
+  headerRight: {
+    width: 40,
+    alignItems: "flex-end",
+  } satisfies ViewStyle,
+
+  headerAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  } satisfies ViewStyle,
+
+  headerProfile: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F2F4F7",
+    borderWidth: 1,
+    borderColor: "#E4E7EC",
+  } satisfies ViewStyle,
+overlay: {
+  ...StyleSheet.absoluteFillObject,
+  backgroundColor: "rgba(15, 23, 42, 0.38)",
+},
+  /* Sidebar */
+
+  modalRoot: {
+    flex: 1,
+    flexDirection: "row",
+  } satisfies ViewStyle,
+
+  overlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(15, 23, 42, 0.38)",
+  } satisfies ViewStyle,
+
+  sidebar: {
+    width: 292,
+    height: "100%",
+    backgroundColor: "#FFFFFF",
+    elevation: 12,
+    shadowColor: "#101828",
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 5,
+      height: 0,
+    },
+  } satisfies ViewStyle,
+
+  sidebarHeader: {
+    minHeight: 84,
+    paddingHorizontal: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#EAECF0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } satisfies ViewStyle,
+
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  } satisfies ViewStyle,
+
+  brandIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#208AEF",
+    marginRight: 11,
+  } satisfies ViewStyle,
+
+  brandIconText: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  } satisfies TextStyle,
+
+  logo: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#111827",
+    letterSpacing: 0.3,
+  } satisfies TextStyle,
+
+  logoSubtitle: {
+    marginTop: 2,
+    fontSize: 10,
+    color: "#98A2B3",
+  } satisfies TextStyle,
+
+  closeButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F2F4F7",
+  } satisfies ViewStyle,
+
+  menuContent: {
+    paddingHorizontal: 12,
+    paddingTop: 13,
+    paddingBottom: 20,
+  } satisfies ViewStyle,
+
+  menuSection: {
+    marginBottom: 12,
+  } satisfies ViewStyle,
+
+  sectionTitle: {
+    marginTop: 10,
+    marginBottom: 7,
+    marginLeft: 9,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+    color: "#98A2B3",
+  } satisfies TextStyle,
+
+  menuItem: {
+    minHeight: 48,
+    paddingHorizontal: 10,
+    borderRadius: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 3,
+    position: "relative",
+  } satisfies ViewStyle,
+
+  menuItemActive: {
+    backgroundColor: "#EAF4FF",
+  } satisfies ViewStyle,
+
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  } satisfies ViewStyle,
+
+  menuIconActive: {
+    backgroundColor: "#FFFFFF",
+  } satisfies ViewStyle,
+
+  menuLabel: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#667085",
+  } satisfies TextStyle,
+
+  menuLabelActive: {
+    color: "#1674CF",
+    fontWeight: "700",
+  } satisfies TextStyle,
+
+  activeIndicator: {
+    position: "absolute",
+    right: 9,
+    width: 4,
+    height: 20,
+    borderRadius: 3,
+    backgroundColor: "#208AEF",
+  } satisfies ViewStyle,
+
+  /* Footer */
+
+  sidebarFooter: {
+    minHeight: 72,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#EAECF0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } satisfies ViewStyle,
+
+  footerTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#344054",
+  } satisfies TextStyle,
+
+  footerSubtitle: {
+    marginTop: 2,
+    fontSize: 9,
+    color: "#98A2B3",
+  } satisfies TextStyle,
+
+  versionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: "#F2F4F7",
+  } satisfies ViewStyle,
+
+  versionText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#667085",
+  } satisfies TextStyle,
+
+  pressed: {
+    opacity: 0.65,
+  } satisfies ViewStyle,
+};
