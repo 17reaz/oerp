@@ -8,10 +8,15 @@ import {
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase } from "@/lib/supabase";
+import { Platform } from "react-native";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
+WebBrowser.maybeCompleteAuthSession();
 type AuthContextValue = {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -58,7 +63,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }
+async function signInWithGoogle() {
+  const redirectTo = Linking.createURL("auth/callback");
 
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      skipBrowserRedirect: Platform.OS !== "web",
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  // Web: Supabase browser redirect handle করবে
+  if (Platform.OS === "web") {
+    return;
+  }
+
+  if (!data?.url) {
+    throw new Error("Unable to start Google sign-in.");
+  }
+
+  const result = await WebBrowser.openAuthSessionAsync(
+    data.url,
+    redirectTo,
+  );
+
+  if (result.type !== "success" || !result.url) {
+    if (result.type === "cancel" || result.type === "dismiss") {
+      return;
+    }
+
+    throw new Error("Google sign-in could not be completed.");
+  }
+
+  const callbackUrl = new URL(result.url);
+  const code = callbackUrl.searchParams.get("code");
+
+  if (!code) {
+    const errorDescription =
+      callbackUrl.searchParams.get("error_description") ??
+      callbackUrl.searchParams.get("error");
+
+    throw new Error(
+      errorDescription ?? "Google sign-in callback failed.",
+    );
+  }
+
+  const { error: exchangeError } =
+    await supabase.auth.exchangeCodeForSession(code);
+
+  if (exchangeError) {
+    throw exchangeError;
+  }
+}
   async function signOut() {
     const { error } = await supabase.auth.signOut();
 
@@ -73,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         signIn,
+        signInWithGoogle,
         signOut,
       }}
     >

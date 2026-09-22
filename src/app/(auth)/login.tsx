@@ -11,12 +11,12 @@ import {
 
 import { useAuth } from "../features/auth/auth-provider";
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn,signInWithGoogle } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
+const [googleLoading, setGoogleLoading] = useState(false);
   async function handleLogin() {
     if (!email.trim() || !password) {
       Alert.alert("Login", "Email and password are required.");
@@ -38,7 +38,22 @@ export default function LoginScreen() {
       setLoading(false);
     }
   }
+async function handleGoogleLogin() {
+  try {
+    setGoogleLoading(true);
 
+    await signInWithGoogle();
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to sign in with Google.";
+
+    Alert.alert("Google sign-in failed", message);
+  } finally {
+    setGoogleLoading(false);
+  }
+}
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -85,6 +100,34 @@ export default function LoginScreen() {
           </Pressable>
         </View>
       </View>
+      <View style={styles.dividerRow}>
+  <View style={styles.divider} />
+  <Text style={styles.orText}>OR</Text>
+  <View style={styles.divider} />
+</View>
+
+<Pressable
+  onPress={handleGoogleLogin}
+  disabled={loading || googleLoading}
+  style={[
+    styles.googleButton,
+    (loading || googleLoading) && styles.buttonDisabled,
+  ]}
+>
+  {googleLoading ? (
+    <ActivityIndicator />
+  ) : (
+    <>
+      <View style={styles.googleIcon}>
+        <Text style={styles.googleIconText}>G</Text>
+      </View>
+
+      <Text style={styles.googleButtonText}>
+        Continue with Google
+      </Text>
+    </>
+  )}
+</Pressable>
     </View>
   );
 }
@@ -145,4 +188,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  dividerRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+  marginVertical: 2,
+},
+
+divider: {
+  flex: 1,
+  height: 1,
+  backgroundColor: "#e5e5e5",
+},
+
+orText: {
+  color: "#888",
+  fontSize: 12,
+  fontWeight: "600",
+},
+
+googleButton: {
+  height: 52,
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: "#ddd",
+  backgroundColor: "#fff",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+},
+
+googleIcon: {
+  width: 24,
+  height: 24,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+googleIconText: {
+  fontSize: 20,
+  fontWeight: "700",
+  color: "#4285F4",
+},
+
+googleButtonText: {
+  fontSize: 16,
+  fontWeight: "600",
+  color: "#222",
+},
 });
